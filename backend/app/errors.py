@@ -4,16 +4,20 @@ from fastapi.responses import JSONResponse
 
 
 class Problem(Exception):
-    def __init__(self, status: int, code: str, detail: str):
+    def __init__(self, status: int, code: str, detail: str, details=None):
         super().__init__(detail)
         self.status = status
         self.code = code
         self.detail = detail
+        self.details = details
 
 
 async def problem_handler(request: Request, exc: Problem):
+    error = {'code': exc.code, 'detail': exc.detail}
+    if exc.details is not None:
+        error['details'] = exc.details
     return JSONResponse(status_code=exc.status, content={
-        'error': {'code': exc.code, 'detail': exc.detail},
+        'error': error,
         'request_id': getattr(request.state, 'request_id', None),
     })
 

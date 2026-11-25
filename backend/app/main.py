@@ -8,6 +8,7 @@ from starlette.concurrency import run_in_threadpool
 from app.analysis.api import router as analysis_api
 from app.auth.api import router as auth_api
 from app.data.api import router as data_api
+from app.data.correction_api import router as correction_api
 from app.delivery.api import router as delivery_api
 from app.errors import Problem, problem_handler, validation_handler
 from app.ops.admin_api import router as admin_api
@@ -35,6 +36,6 @@ app.add_exception_handler(Problem, problem_handler)
 app.add_exception_handler(RequestValidationError, validation_handler)
 app.add_middleware(AccessTiming)
 app.add_middleware(RequestContext)
-for router in (auth_api, data_api, analysis_api, delivery_api, admin_api):
+for router in (auth_api, data_api, analysis_api, delivery_api, correction_api, admin_api):
     app.include_router(router, prefix='/api')
 app.include_router(health_api)

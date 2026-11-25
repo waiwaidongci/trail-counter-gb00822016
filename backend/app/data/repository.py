@@ -38,8 +38,9 @@ def import_dataset(name: str, rows: list[dict], actor: str):
         raise
 
 
-def get_dataset(db, dataset_id: int) -> Dataset:
-    dataset = db.get(Dataset, dataset_id)
+def get_dataset(db, dataset_id: int, lock: bool = False) -> Dataset:
+    query = select(Dataset).where(Dataset.id == dataset_id)
+    dataset = db.scalar(query.with_for_update() if lock else query)
     if dataset is None:
         raise Problem(404, 'dataset_not_found', 'Dataset does not exist')
     return dataset

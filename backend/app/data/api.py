@@ -11,7 +11,7 @@ from app.auth.roles import Role
 from app.clock import utc_iso
 from app.data.contracts import DatasetImport
 from app.data.csv_input import parse_csv
-from app.data.models import Dataset
+from app.data.models import ClockCorrection, Dataset
 from app.data.repository import get_dataset, import_dataset, observation_query
 from app.database import Session
 from app.errors import Problem
@@ -44,13 +44,29 @@ def list_datasets(user=Depends(account), limit: Annotated[int, Query(ge=1, le=10
         return [describe(dataset) for dataset in datasets]
 
 
+@router.get('/{dataset_id}')
+def dataset_detail(dataset_id: int, user=Depends(account)):
+    with Session() as db:
+        return describe(get_dataset(db, dataset_id))
+
+
 @router.get('/{dataset_id}/rows')
 def rows(dataset_id: int, user=Depends(account),
          offset: Annotated[int, Query(ge=0)] = 0, limit: Annotated[int, Query(ge=1, le=250)] = 50):
     with Session() as db:
         dataset = get_dataset(db, dataset_id)
         records = list(db.scalars(observation_query(dataset_id).offset(offset).limit(limit)))
-    return {'dataset': describe(dataset), 'offset': offset, 'rows': records}
+        correction = db.scalar(select(ClockCorrection).where(
+            ClockCorrection.result_dataset_id == dataset_id,
+        ).order_by(ClockCorrection.id.desc()))
+    response = {'dataset': describe(dataset), 'offset': offset, 'rows': records}
+    if correction is not None:
+        response['correction_id'] = correction.id
+        response['source_dataset_id'] = correction.source_dataset_id
+        response['movements'] = correction.movements
+        response['moved_readings'] = correction.movements
+        response['original_windows'] = correction.movements
+    return response
 
 
 @router.post('', openapi_extra={'requestBody': {'required': True, 'content': {

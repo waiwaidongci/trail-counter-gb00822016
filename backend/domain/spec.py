@@ -3,6 +3,15 @@
 from collections.abc import Iterable, Mapping
 
 from .demo.seed import SEED_NAME, seed
+from .intake.corrections import (
+    CorrectionCollision,
+    CorrectionPlan,
+    apply_clock_correction,
+    apply_time_correction,
+    plan_clock_correction,
+    plan_correction,
+    shift_windows,
+)
 from .intake.records import ReadingInput, record_key, validate_rows, validated_readings
 from .intake.schemas import CounterReading, ReviewOptions
 from .intake.windows import group_windows
@@ -16,6 +25,9 @@ OPTIONS_MODEL = ReviewOptions
 __all__ = [
     "TITLE", "METHOD", "SEED_NAME", "ROW_MODEL", "OPTIONS_MODEL",
     "record_key", "validate_rows", "analyze", "seed",
+    "plan_correction", "plan_clock_correction", "shift_windows",
+    "apply_clock_correction", "apply_time_correction",
+    "CorrectionPlan", "CorrectionCollision",
 ]
 
 

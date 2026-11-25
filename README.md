@@ -32,7 +32,8 @@ curl --fail -X POST http://127.0.0.1:19331/api/auth/login \
 |---|---|
 | 获取领域字段和配置 | `GET /api/method` 返回数据行和选项的 JSON Schema |
 | 导入及核对 | `POST /api/datasets` 接受 `{"name":"…","rows":[…]}`，或用 `Content-Type: text/csv` 和 `?name=…` 传原始 CSV。`GET /api/datasets` 列版本，`GET /api/datasets/{id}/rows` 分页读原始行 |
-| 运算 | `POST /api/datasets/{id}/runs` 提交 `{"options":{}}` 使用默认值，`GET /api/runs/{run_id}` 轮询结果 |
+| 校时与新版本 | `POST /api/datasets/{id}/clock-corrections`（也可用 `/corrections`）提交整段窗口移动；支持 `Idempotency-Key`。同一原版本只受理一份不同校时，重试或在后续版本上再次校时后重试原请求都返回当初生成的版本。撞上校时段外读数时整批回滚 |
+| 运算 | `POST /api/datasets/{id}/runs` 提交 `{"options":{}}` 使用默认值，`GET /api/runs/{run_id}` 轮询结果；校时后的结果在 `tables.readings`、`tables.moved_readings` 及窗口行的 `original_window_start_a/b` 中保留原窗 |
 | 复核 | `POST /api/runs/{run_id}/review` 提交 `{"decision":"approved","note":"已核对来源与口径"}`，决策也可为 `rejected` |
 | 报告和分发 | `GET /api/runs/{run_id}/report` 获取带版本校验值的报告，`GET /api/runs/{run_id}/report/csv?table=…` 导出业务表。审批后 `POST /api/runs/{run_id}/deliveries` 提交 `recipient` 与带偏移的 `due_at`，由 worker 到点写入 `GET /api/inbox`；`GET /api/audit` 查询审计 |
 

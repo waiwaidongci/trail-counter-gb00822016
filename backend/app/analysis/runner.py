@@ -5,7 +5,9 @@ from sqlalchemy import select
 
 from app.analysis.contracts import RunStatus
 from app.analysis.models import AnalysisRun
+from app.analysis.provenance import augment_result_with_origins
 from app.clock import now_utc
+from app.data.models import ClockCorrection
 from app.data.repository import observation_query
 from app.database import Session
 from app.ops.audit import audit
@@ -34,7 +36,13 @@ def run_next() -> bool:
         try:
             rows = [ROW_MODEL.model_validate(item) for item in db.scalars(observation_query(run.dataset_id))]
             options = OPTIONS_MODEL.model_validate(run.options)
-            run.result = validate_result(analyze(rows, options))
+            result = analyze(rows, options)
+            correction = db.scalar(select(ClockCorrection).where(
+                ClockCorrection.result_dataset_id == run.dataset_id,
+            ).order_by(ClockCorrection.id.desc()))
+            if correction is not None:
+                augment_result_with_origins(result, correction)
+            run.result = validate_result(result)
             run.status = RunStatus.completed
         except ValueError as exc:
             run.status = RunStatus.failed
