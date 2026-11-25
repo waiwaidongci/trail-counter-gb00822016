@@ -1,0 +1,64 @@
+name: trail-counter-gb0082
+x-python: &python
+  image: trail-counter-gb0082:local
+  environment:
+    DATABASE_URL: mysql+pymysql://analytics:analytics_local@db:3306/analytics
+    REDIS_URL: redis://redis:6379/0
+    JWT_SECRET: ${JWT_SECRET:?copy .env.example to .env}
+    SEED_DEMO: ${SEED_DEMO:-true}
+services:
+  backend:
+    <<: *python
+    build: ./backend
+    container_name: ${COMPOSE_PROJECT_NAME:-trail-counter-gb0082}-backend
+    ports: ["127.0.0.1:${BACKEND_PORT:-19331}:8000"]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  worker:
+    <<: *python
+    pull_policy: never
+    container_name: ${COMPOSE_PROJECT_NAME:-trail-counter-gb0082}-worker
+    command: [python, -m, app.ops.worker]
+    depends_on:
+      backend: {condition: service_healthy}
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -m, app.ops.worker_probe]
+      interval: 2s
+      timeout: 3s
+      retries: 25
+  db:
+    container_name: ${COMPOSE_PROJECT_NAME:-trail-counter-gb0082}-db
+    ports: ["127.0.0.1:${DB_PORT:-17831}:3306"]
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql_root_local
+      MYSQL_USER: analytics
+      MYSQL_PASSWORD: analytics_local
+      MYSQL_DATABASE: analytics
+    volumes: [db_data:/var/lib/mysql]
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql --protocol=TCP -h127.0.0.1 -u"$$MYSQL_USER" "$$MYSQL_DATABASE" --batch -e "SELECT 1"']
+      interval: 2s
+      timeout: 5s
+      retries: 50
+  redis:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-trail-counter-gb0082}-redis
+    command: [redis-server, --appendonly, 'yes']
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+volumes:
+  db_data:
+  redis_data:
